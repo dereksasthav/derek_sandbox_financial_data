@@ -9,29 +9,52 @@ FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
 WHERE COMPANY = '20.02-SESC'
 ;
 
+-- check dates 
+select distinct datemonthend
+FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
+ORDER BY DATEMONTHEND;
+
+with gcprod as (
+  select distinct datemonthend
+    FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY
+), zap as (
+    
+  select distinct datemonthend
+FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
+)
+
+select gcprod.datemonthend as gcprod, zap.datemonthend as zap
+from gcprod full outer join zap on gcprod.datemonthend = zap.datemonthend
+order by gcprod.datemonthend desc
+
+
 with gcprod as (
 
     SELECT 
         COMPANY
+        , DATEMONTHEND
         , COUNT(*) as numRecords_GCPROD
         , SUM("AR MONTHEND BALANCE") as balance_gcprod
     FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY
-    GROUP BY COMPANY
+    GROUP BY COMPANY, DATEMONTHEND
 
 ), zap as (
 
     SELECT  
         COMPANY
+        , DATEMONTHEND
         , COUNT(*) as numRecords_zap
         , SUM("AR MONTHEND BALANCE") as balance_zap
     FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
-    GROUP BY COMPANY
+    GROUP BY COMPANY, DATEMONTHEND
 
 )
 
 select 
     gcprod.company as company_gcprod
     , zap.company as company_zap
+    , gcprod.DATEMONTHEND as DATEMONTHEND_gcprod
+    , zap.DATEMONTHEND as DATEMONTHEND_zap
     , numRecords_GCPROD
     , numRecords_zap
     , numRecords_zap - numRecords_GCPROD as numRecords_ZapMinusGCPROD
@@ -39,31 +62,36 @@ select
     , balance_zap
     , balance_zap - balance_gcprod as balance_ZapMinusGCPROD
 FROM 
-    gcprod FULL OUTER JOIN  zap on gcprod.company = zap.company
+    gcprod FULL OUTER JOIN  zap on gcprod.company = zap.company AND gcprod.DATEMONTHEND = zap.DATEMONTHEND
+WHERE 1=1
+    AND (gcprod.company IS NULL or zap.company IS NULL)
 
 /** check document counts **/
 with gcprod as (
 
     SELECT 
         COMPANY
+        , DATEMONTHEND
         , "DOCUMENT NO." as document_no
         , COUNT(*) as numRecords_GCPROD
         , SUM("AR MONTHEND BALANCE") as balance_gcprod
     FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY
     WHERE company = '20.02-SESC'
     GROUP BY COMPANY
+        , DATEMONTHEND
         , "DOCUMENT NO."
 
 ), zap as (
 
     SELECT  
         COMPANY
+        , DATEMONTHEND
         , "DOCUMENT NO." as document_no
         , COUNT(*) as numRecords_zap
         , SUM("AR MONTHEND BALANCE") as balance_zap
     FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
     WHERE company = '20.02-SESC'
-    GROUP BY COMPANY
+    GROUP BY COMPANY, DATEMONTHEND
         , "DOCUMENT NO."
 
 )
@@ -73,6 +101,8 @@ select
     , gcprod.document_no as document_no_gcprod
     , zap.company as company_zap
     , zap.document_no as document_no_zap
+    , gcprod.DATEMONTHEND as DATEMONTHEND_gcprod
+    , zap.DATEMONTHEND as DATEMONTHEND_zap
     , numRecords_GCPROD
     , numRecords_zap
     , balance_gcprod
