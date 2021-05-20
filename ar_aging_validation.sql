@@ -11,16 +11,23 @@ WHERE COMPANY = '20.02-SESC'
 
 -- check dates 
 select distinct datemonthend
+FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY
+ORDER BY DATEMONTHEND;
+
+select distinct datemonthend
 FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
 ORDER BY DATEMONTHEND;
 
+-- compare dates
 with gcprod as (
-  select distinct datemonthend
+
+    select distinct datemonthend
     FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY
+
 ), zap as (
-    
-  select distinct datemonthend
-FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
+
+    select distinct datemonthend
+    FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
 )
 
 select gcprod.datemonthend as gcprod, zap.datemonthend as zap
@@ -344,15 +351,36 @@ with customer_ledger as (
 
         )
 
+), zap as (
+
+    SELECT *
+    FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
+    WHERE COMPANY = '20.02-SESC' AND datemonthend = '2021-04-30'
+
 )
 
 
-SELECT *
+
+
+
+
+SELECT fnl."CUST. LEDGER ENTRY NO." as fnl, zap."CUST. LEDGER ENTRY NO." as zap
 FROM fnl
+FULL OUTER JOIN zap ON fnl."CUST. LEDGER ENTRY NO." = zap."CUST. LEDGER ENTRY NO."
+WHERE (fnl.DATE_MONTH_END = '2021-04-30' OR zap.DATEMONTHEND = '2021-04-30')
+AND (fnl."CUST. LEDGER ENTRY NO." IS NULL OR zap."CUST. LEDGER ENTRY NO." IS NULL)
+ORDER BY fnl."CUST. LEDGER ENTRY NO."
+
+
+/**
+SELECT *
+FROM fnl 
 WHERE DATE_MONTH_END = '2021-04-30'
+AND "DOCUMENT NO." IN (
+    SELECT "DOCUMENT NO." FROM fnl EXCEPT SELECT "DOCUMENT NO." FROM zap
+)
 
-
-
+**/
 /** ABRAHAM original logic 
 and (
                          (    
@@ -375,5 +403,11 @@ and (
                               base_ar."OPEN" = 1
                            )
                       )
+
+**/
+
+
+/** Notes
+ZAP includes records that are not included in GCPROD, mostly due to filter on Entry Type = 2
 
 **/
