@@ -119,6 +119,81 @@ USING(
             on ct."COMPANY"           =  inv_age.COMPANY
             and ct."INVOICE AGED DAYS" >= inv_age."FROM"
             and ct."INVOICE AGED DAYS" <= inv_age."TO" 
+    )
+        SELECT *
+        FROM final 
 
 
-)
+) as source
+ON target.summarykey = src.summarykey
+    when matched 
+        then update 
+            set "INGEST_DATETIME"                  = src."INGEST_DATETIME"
+                , DATEMONTHEND                     = src.DATEMONTHEND
+                , "CUST. LEDGER ENTRY NO."         = src."CUST. LEDGER ENTRY NO."
+                , "COMPANY"                        = src."COMPANY"
+                , "CUSTOMER NO."                   = src."CUSTOMER NO."
+                , "DOCUMENT NO."                   = src."DOCUMENT NO."
+                , "CURRENCY CODE"                  = src."CURRENCY CODE"
+                , "POSTING DATE"                   = src."POSTING DATE"
+                , "CURRENCY CODE LCY"              = src."CURRENCY CODE LCY"
+                , "DOCUMENT DATE"                  = src."DOCUMENT DATE"
+                , "INITIAL ENTRY DUE DATE"         = src."INITIAL ENTRY DUE DATE"
+                , "AR INVOICE AMOUNT (LCY)"        = src."AR INVOICE AMOUNT (LCY)"
+                , "AR INVOICE AMOUNT"              = src."AR INVOICE AMOUNT"
+                , "AR MONTHEND BALANCE (LCY)"      = src."AR MONTHEND BALANCE (LCY)"
+                , "AR MONTHEND BALANCE"            = src."AR MONTHEND BALANCE"
+                , "DUE AGED DAYS"                  = src."DUE AGED DAYS"
+                , "INVOICE AGED DAYS"              = src."INVOICE AGED DAYS"
+                , "BUCKET ID BY DUE"               = src."BUCKET ID BY DUE"
+                , "BUCKET ID BY INVOICE"           = src."BUCKET ID BY INVOICE"
+    when not matched 
+     then insert 
+     (
+              SUMMARYKEY
+            , DATEMONTHEND
+            , "CUST. LEDGER ENTRY NO."
+            , "COMPANY"
+            , "CUSTOMER NO."
+            , "DOCUMENT NO."
+            , "CURRENCY CODE"
+            , "POSTING DATE"
+            , "CURRENCY CODE LCY"
+            , "DOCUMENT DATE"
+            , "INITIAL ENTRY DUE DATE"
+            , "AR INVOICE AMOUNT (LCY)"
+            , "AR INVOICE AMOUNT"
+            , "AR MONTHEND BALANCE (LCY)"
+            , "AR MONTHEND BALANCE"
+            , "DUE AGED DAYS"
+            , "INVOICE AGED DAYS"
+            , "BUCKET ID BY DUE"
+            , "BUCKET ID BY INVOICE"
+            , INGEST_DATETIME
+     )
+     values 
+     (  
+              src.SUMMARYKEY
+            , src.DATEMONTHEND
+            , src."CUST. LEDGER ENTRY NO."
+            , src."COMPANY"
+            , src."CUSTOMER NO."
+            , src."DOCUMENT NO."
+            , src."CURRENCY CODE"
+            , src."POSTING DATE"
+            , src."CURRENCY CODE LCY"
+            , src."DOCUMENT DATE"
+            , src."INITIAL ENTRY DUE DATE"
+            , src."AR INVOICE AMOUNT (LCY)"
+            , src."AR INVOICE AMOUNT"
+            , src."AR MONTHEND BALANCE (LCY)"
+            , src."AR MONTHEND BALANCE"
+            , src."DUE AGED DAYS"
+            , src."INVOICE AGED DAYS"
+            , src."BUCKET ID BY DUE"
+            , src."BUCKET ID BY INVOICE"
+            , src.INGEST_DATETIME
+     )
+; 
+ 
+
