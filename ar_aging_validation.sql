@@ -795,6 +795,7 @@ with base_ar as (
         , coalesce(  dcle."DOCUMENT NO_"  , cle."DOCUMENT NO_") "DOCUMENT NO."
         , coalesce(  dcle."CUST_ LEDGER ENTRY NO_", cle."ENTRY NO_")    "CUST. LEDGER ENTRY NO."
         , coalesce(dcle."POSTING DATE" , cle."POSTING DATE"  )   "POSTING DATE"
+        , dcle.amount 
         , cle."OPEN" 
         , cle."CLOSED AT DATE"
         , cle."CLOSED BY AMOUNT"
@@ -802,8 +803,7 @@ with base_ar as (
         , coalesce(  dcle."CURRENCY CODE" , cle."CURRENCY CODE")  "CURRENCY CODE"
         , cle."DOCUMENT DATE"  "DOCUMENT DATE"
         , coalesce(  dcle."INITIAL ENTRY DUE DATE" , cle."DUE DATE" )  "INITIAL ENTRY DUE DATE"
-        , dcle."AMOUNT (LCY)"  "AR MONTHEND BALANCE (LCY)"
-        , dcle."AMOUNT"  "AR MONTHEND BALANCE"
+        , dcle."AMOUNT (LCY)"  
         , case 
             when dcle."ENTRY TYPE" = 1 then  dcle."DEBIT AMOUNT"
             end   POSTED_INVOICE
@@ -847,14 +847,76 @@ with base_ar as (
     group by 
         dt.MONTH_YEAR_ABREV
 
+), grouped_ar as (
+
+    select 
+        "COMPANY"
+        , "CUSTOMER NO."
+        , "DOCUMENT NO."
+        , "CUST. LEDGER ENTRY NO."
+        , "POSTING DATE"
+        , SUM(amount) as amount 
+        , "OPEN" 
+        , "CLOSED AT DATE"
+        , "CLOSED BY AMOUNT"
+        --, dcle."ENTRY TYPE"
+        , "CURRENCY CODE"
+        , "DOCUMENT DATE"
+        , "INITIAL ENTRY DUE DATE"
+        , SUM("AMOUNT (LCY)") as amount_lcy
+        , current_date()                    "ZAP_TIMESTAMP"
+        , current_date()                    "ZAP_CREATEDTIME"
+        --, dcle."DEBIT AMOUNT (LCY)"          "AR INVOICE AMOUNT (LCY)"
+        --, dcle."DEBIT AMOUNT"                "AR INVOICE AMOUNT"
+        , "CLOSED BY AMOUNT (LCY)"
+        , "POSITIVE"
+        --, dcle."SOURCE CODE"
+
+        --"DUE AGED DAYS"
+        --"INVOICE AGED DAYS"
+        --, "BUCKET ID BY DUE"
+        --, "BUCKET ID BY INVOICE"
+        , "CURRENCY CODE LCY"
+        , current_date()                     INGEST_DATETIME
+    from base_ar
+    group by 
+        "COMPANY"
+        , "CUSTOMER NO."
+        , "DOCUMENT NO."
+        , "CUST. LEDGER ENTRY NO."
+        , "POSTING DATE"
+        , "OPEN" 
+        , "CLOSED AT DATE"
+        , "CLOSED BY AMOUNT"
+        --, dcle."ENTRY TYPE"
+        , "CURRENCY CODE"
+        , "DOCUMENT DATE"
+        , "INITIAL ENTRY DUE DATE"
+        , current_date()                  
+        , current_date()                    
+        --, dcle."DEBIT AMOUNT (LCY)"          
+        --, dcle."DEBIT AMOUNT"               
+        , "CLOSED BY AMOUNT (LCY)"
+        , "POSITIVE"
+        --, dcle."SOURCE CODE"
+        --"DUE AGED DAYS"
+        --"INVOICE AGED DAYS"
+        --, "BUCKET ID BY DUE"
+        --, "BUCKET ID BY INVOICE"
+        , "CURRENCY CODE LCY"
+        , current_date()                     
+
+
 )
   
     select 
         mon_dt.DATE_MONTH_END
-        , base_ar.*
-    from base_ar 
+        , sum(amount) OVER(PARTITION BY "COMPANY", "CUSTOMER NO.","CUST. LEDGER ENTRY NO." ORDER BY "POSTING DATE" )
+        , grouped_ar.*
+    from grouped_ar
     cross join mon_dt 
     where 1=1
-        and  base_ar."POSTING DATE"     <= mon_dt.DATE_MONTH_END 
+        and  "POSTING DATE"     <= mon_dt.DATE_MONTH_END 
         --and  sub.CLOSE_POSTING_DATE >= mon_dt.DATE_MONTH_END 
-        and base_ar."CLOSED AT DATE" > mon_dt.DATE_MONTH_END
+        and "CLOSED AT DATE" > mon_dt.DATE_MONTH_END
+    ORDER BY COMPANY, "CUSTOMER NO.",mon_dt.DATE_MONTH_END
