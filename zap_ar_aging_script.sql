@@ -19,7 +19,7 @@ with mon_dt as (
         , coalesce(  dcle."DOCUMENT NO_"  , cle."DOCUMENT NO_") "DOCUMENT NO."
         , coalesce(  dcle."CUST_ LEDGER ENTRY NO_", cle."ENTRY NO_")    "CUST. LEDGER ENTRY NO."
         , coalesce(dcle."POSTING DATE" , cle."POSTING DATE"  )   "POSTING DATE"
-        , SUM(dcle.amount) amount 
+        , SUM(dcle.amount) "AR MONTHEND BALANCE"
         , cle."OPEN" 
         , cle."CLOSED AT DATE"
         , cle."CLOSED BY AMOUNT"
@@ -27,7 +27,7 @@ with mon_dt as (
         , coalesce(  dcle."CURRENCY CODE" , cle."CURRENCY CODE")  "CURRENCY CODE"
         , cle."DOCUMENT DATE"  "DOCUMENT DATE"
         , coalesce(  dcle."INITIAL ENTRY DUE DATE" , cle."DUE DATE" )  "INITIAL ENTRY DUE DATE"
-        , SUM(dcle."AMOUNT (LCY)") as "AMOUNT (LCY)" 
+        , SUM(dcle."AMOUNT (LCY)") as "AR MONTHEND BALANCE (LCY)" 
         --, case 
           --  when dcle."ENTRY TYPE" = 1 then  dcle."DEBIT AMOUNT"
             --end   POSTED_INVOICE
@@ -36,8 +36,8 @@ with mon_dt as (
           --  end POSTED_PAYMENT
         , current_date()                    "ZAP_TIMESTAMP"
         , current_date()                    "ZAP_CREATEDTIME"
-        --, dcle."DEBIT AMOUNT (LCY)"          "AR INVOICE AMOUNT (LCY)"
-        --, dcle."DEBIT AMOUNT"                "AR INVOICE AMOUNT"
+        , SUM(dcle."DEBIT AMOUNT (LCY)") as "AR INVOICE AMOUNT (LCY)"
+        , SUM(dcle."DEBIT AMOUNT") as "AR INVOICE AMOUNT"
         --, cle."CLOSED BY AMOUNT (LCY)"
         , cle."POSITIVE"
         --, dcle."SOURCE CODE"
@@ -74,7 +74,24 @@ with mon_dt as (
 
 ), final as (
 
-    select m.DATE_MONTH_END, base_ar.*
+    select 
+        ROW_NUMBER() OVER(ORDER BY  DATE_MONTH_END, "COMPANY", "CUST. LEDGER ENTRY NO.") as SUMMARYKEY
+        , m.DATE_MONTH_END as DATEMONTHEND
+        , base_ar."CUST. LEDGER ENTRY NO."
+        , base_ar.COMPANY
+        , base_ar."CUSTOMER NO."
+        , base_ar."DOCUMENT  NO."
+        , base_ar."CURRENCY CODE"
+        , base_ar."POSTING DATE"
+        , base_ar."CURRENCY CODE LCY"
+        , base_ar."DOCUMENT DATE"
+        , base_ar."INITIAL ENTRY DUE DATE"
+        , base_ar."AR INVOICE AMOUNT (LCY)"
+        , base_ar."AR INVOICE AMOUNT"
+        , base_ar."AR MONTHEND BALANCE (LCY)"
+        , base_ar."AR MONTHEND BALANCE"
+        , DATEDIFF(d, m.DATE_MONTH_END, base_ar."INITIAL ENTRY DUE DATE") as "DUE AGED DAYS"
+        , DATEDIFF(d, m.DATE_MONTH_END, base_ar."DOCUMENT DATE") as "INVOICE AGED DAYS"
     from base_ar
     CROSS JOIN mon_dt m
     WHERE 
@@ -87,6 +104,7 @@ with mon_dt as (
 
 ), zap as (
 
+    -- pull in ZAP comparison
     SELECT *
     FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
     WHERE 1=1 
@@ -96,50 +114,53 @@ with mon_dt as (
 
 ), zap_grouped as (
 
+    -- group by month by company by customer
     SELECT 
-        DATEMONTHEND as date_month_end
+        DATEMONTHEND
         , COMPANY
         , "CUSTOMER NO."
         , SUM("AR MONTHEND BALANCE") as "AMOUNT_ZAP" 
     FROM zap  
     GROUP BY
-        DATE_MONTH_END
+        DATEMONTHEND
         , COMPANY
         , "CUSTOMER NO."
 
 ), final_grouped as (
 
+    -- group the final output for variance analysis
     select 
-        date_month_end
+        datemonthend
         , replace(company,'_','.') as company 
         , "CUSTOMER NO."
         --, "CUST. LEDGER ENTRY NO."
         , SUM(amount) as AMOUNT_GCPROD
      from final 
      group by 
-        date_month_end
+        datemonthend
         , company
         , "CUSTOMER NO."
         --, "CUST. LEDGER ENTRY NO."
     
 )
 
+    -- final comparison
     SELECT 
-        final_grouped.date_month_end as date_month_end_gcprod
+        final_grouped.datemonthend as date_month_end_gcprod
         , final_grouped.company as company_gcprod
         , final_grouped."CUSTOMER NO." as customer_no_gcprod 
-        , zap_grouped.date_month_end as date_month_end_zap
+        , zap_grouped.datemonthend as date_month_end_zap
         , zap_grouped.company as company_zap
         , zap_grouped."CUSTOMER NO." as customer_no_zap 
         , final_grouped.AMOUNT_GCPROD
         , zap_grouped.AMOUNT_ZAP
         , ROUND(IFNULL(final_grouped.AMOUNT_GCPROD,0) - IFNULL(zap_grouped.AMOUNT_ZAP,0)) as variance 
     FROM final_grouped FULL OUTER JOIN zap_grouped
-        ON final_grouped.DATE_MONTH_END = zap_grouped.DATE_MONTH_END
+        ON final_grouped.DATEMONTHEND = zap_grouped.DATEMONTHEND
         AND final_grouped.company  = zap_grouped.Company
         AND final_grouped."CUSTOMER NO." = zap_grouped."CUSTOMER NO."
     WHERE 1=1 
-        AND coalesce(final_grouped.date_month_end, zap_grouped.date_month_end) <= '2021-04-30'
-        AND ROUND(IFNULL(final_grouped.AMOUNT_GCPROD,0) - IFNULL(zap_grouped.AMOUNT_ZAP,0))>1
-    ORDER BY zap_grouped.date_month_end
+        AND coalesce(final_grouped.datemonthend, zap_grouped.datemonthend) <= '2021-04-30'
+        AND ROUND(IFNULL(final_grouped.AMOUNT_GCPROD,0) - IFNULL(zap_grouped.AMOUNT_ZAP,0))>1 -- show variance
+    ORDER BY zap_grouped.datemonthend
 
