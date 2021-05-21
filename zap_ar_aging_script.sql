@@ -72,7 +72,7 @@ with mon_dt as (
         , coalesce(  dcle."INITIAL ENTRY DUE DATE" , cle."DUE DATE" ) 
         , cle."POSITIVE"
 
-), final as (
+), cartesian as (
 
     select 
         ROW_NUMBER() OVER(ORDER BY  DATE_MONTH_END, "COMPANY", "CUST. LEDGER ENTRY NO.") as SUMMARYKEY
@@ -80,7 +80,7 @@ with mon_dt as (
         , base_ar."CUST. LEDGER ENTRY NO."
         , base_ar.COMPANY
         , base_ar."CUSTOMER NO."
-        , base_ar."DOCUMENT  NO."
+        , base_ar."DOCUMENT NO."
         , base_ar."CURRENCY CODE"
         , base_ar."POSTING DATE"
         , base_ar."CURRENCY CODE LCY"
@@ -101,6 +101,21 @@ with mon_dt as (
         OR 	
         (m.DATE_MONTH_END = GETDATE() AND base_ar."OPEN" = 1)
     ORDER BY m.DATE_MONTH_END
+), final as (
+
+    select ct.*
+        , due_age."BUCKET ID" as "BUCKET ID BY DUE"
+        , inv_age."BUCKET ID" as "BUCKET ID BY INVOICE"
+        , current_date() as INGEST_DATETIME
+    from cartesian ct
+    LEFT join DATAWAREHOUSE.GC_PROD_WH.RAW_AGING_BUCKET_BY_COMPANY due_age
+        on  ct."COMPANY"           =  due_age.COMPANY
+        and ct."DUE AGED DAYS"     >= due_age."FROM"
+        and ct."DUE AGED DAYS"     <= due_age."TO"
+    LEFT join DATAWAREHOUSE.GC_PROD_WH.RAW_AGING_BUCKET_BY_COMPANY inv_age
+        on ct."COMPANY"           =  inv_age.COMPANY
+        and ct."INVOICE AGED DAYS" >= inv_age."FROM"
+        and ct."INVOICE AGED DAYS" <= inv_age."TO" 
 
 ), zap as (
 
@@ -134,7 +149,7 @@ with mon_dt as (
         , replace(company,'_','.') as company 
         , "CUSTOMER NO."
         --, "CUST. LEDGER ENTRY NO."
-        , SUM(amount) as AMOUNT_GCPROD
+        , SUM("AR MONTHEND BALANCE") as AMOUNT_GCPROD
      from final 
      group by 
         datemonthend
