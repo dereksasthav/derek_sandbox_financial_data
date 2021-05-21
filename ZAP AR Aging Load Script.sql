@@ -58,9 +58,9 @@ USING(
         where 1=1
             -- and dcle."ENTRY TYPE" = 1 -- get all invoiced
             -- and dcle."ENTRY TYPE" = 2 -- get all payments
-            and coalesce(  dcle."COMPANYCODE"  , cle."COMPANYCODE" )   = '20_02-SESC'
-            AND coalesce(  dcle."CUSTOMER NO_"  , cle."CUSTOMER NO_") = 'S-0000736-C'
-            AND coalesce(  dcle."CUST_ LEDGER ENTRY NO_" , cle."ENTRY NO_") IN (107303)
+            --and coalesce(  dcle."COMPANYCODE"  , cle."COMPANYCODE" )   = '20_02-SESC'
+            --AND coalesce(  dcle."CUSTOMER NO_"  , cle."CUSTOMER NO_") = 'S-0000736-C'
+            --AND coalesce(  dcle."CUST_ LEDGER ENTRY NO_" , cle."ENTRY NO_") IN (107303)
         GROUP BY
             coalesce(  dcle."COMPANYCODE"  , cle."COMPANYCODE") 
             , coalesce(  dcle."CUSTOMER NO_"  , cle."CUSTOMER NO_")
