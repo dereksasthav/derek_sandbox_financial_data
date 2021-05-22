@@ -39,13 +39,14 @@ order by gcprod.datemonthend desc
 with gcprod as (
 
     SELECT 
-        COMPANY
+        REPLACE(COMPANY,'_','.') as COMPANY
         , DATEMONTHEND
         , COUNT(*) as numRecords_GCPROD
         , SUM("AR MONTHEND BALANCE") as balance_gcprod
     FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY_TEST
-    WHERE company = '20.02-SESC'
-    GROUP BY COMPANY, DATEMONTHEND
+    WHERE 1=1
+        AND REPLACE(COMPANY,'_','.') = '20.02-SESC'
+    GROUP BY REPLACE(COMPANY,'_','.'), DATEMONTHEND
 
 ), zap as (
 
@@ -70,11 +71,12 @@ select
     , numRecords_zap - numRecords_GCPROD as numRecords_ZapMinusGCPROD
     , balance_gcprod
     , balance_zap
-    , balance_zap - balance_gcprod as balance_ZapMinusGCPROD
+    , ROUND(IFNULL(balance_zap,0) - IFNULL(balance_gcprod,0)) as balance_ZapMinusGCPROD
 FROM 
     gcprod FULL OUTER JOIN  zap on gcprod.company = zap.company AND gcprod.DATEMONTHEND = zap.DATEMONTHEND
 WHERE 1=1
     AND (gcprod.company IS NULL or zap.company IS NULL)
+    AND coalesce(gcprod.datemonthend, zap.datemonthend) <= '2021-04-30'
 ORDER BY company_zap, DATEMONTHEND_zap
 
 /** check document counts **/
@@ -135,14 +137,14 @@ WHERE 1=1
 with gcprod as (
 
     SELECT 
-        COMPANY
+        REPLACE(COMPANY,'_','.') as COMPANY
         , DATEMONTHEND
         , "CUSTOMER NO." as customer_no
         , COUNT(*) as numRecords_GCPROD
         , SUM("AR MONTHEND BALANCE") as balance_gcprod
-    FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY_TEST
-    WHERE company = '20.02-SESC'
-    GROUP BY COMPANY
+    FROM DATAWAREHOUSE.GC_PROD_WH.RAW_ACCOUNTS_RECEIVABLE_MONTHLY_TEST2
+    WHERE REPLACE(COMPANY,'_','.') = '20.02-SESC'
+    GROUP BY REPLACE(COMPANY,'_','.')
         , DATEMONTHEND
         , "CUSTOMER NO."
 
@@ -172,8 +174,8 @@ select
     , numRecords_zap
     , balance_gcprod
     , balance_zap
-    , IFNULL(balance_zap,0) - IFNULL(balance_gcprod,0) as balance_ZapMinusGCPROD
-    , IFNULL(numRecords_zap,0) - IFNULL(numRecords_GCPROD,0) as numRecords_ZapMinusGCPROD
+    , ROUND(IFNULL(balance_zap,0) - IFNULL(balance_gcprod,0)) as balance_ZapMinusGCPROD
+    , ROUND(IFNULL(numRecords_zap,0) - IFNULL(numRecords_GCPROD,0)) as numRecords_ZapMinusGCPROD
 FROM 
     gcprod FULL OUTER JOIN  zap 
     on gcprod.company = zap.company 

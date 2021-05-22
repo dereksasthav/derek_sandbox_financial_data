@@ -10,7 +10,7 @@ USING(
         from DATAWAREHOUSE.PUBLIC.LU_STATIC_RAW_CALENDAR dt
         where 1=1
             and dt.date_key >= to_date('2017-01-01')
-            and dt.date_key <  current_date()
+            and dt.date_key < current_date()
         group by 
             dt.MONTH_YEAR_ABREV
 
@@ -74,6 +74,7 @@ USING(
             , cle."DOCUMENT DATE"  
             , coalesce(  dcle."INITIAL ENTRY DUE DATE" , cle."DUE DATE" ) 
             , cle."POSITIVE"
+        HAVING SUM(dcle.amount) <> 0
 
     ), cartesian as (
 
@@ -112,11 +113,11 @@ USING(
             , current_date() as INGEST_DATETIME
         from cartesian ct
         LEFT join DATAWAREHOUSE.GC_PROD_WH.RAW_AGING_BUCKET_BY_COMPANY due_age
-            on  ct."COMPANY"           =  due_age.COMPANY
+            on  replace(ct."COMPANY",'_','.') =  replace(due_age.COMPANY,'_','.')
             and ct."DUE AGED DAYS"     >= due_age."FROM"
             and ct."DUE AGED DAYS"     <= due_age."TO"
         LEFT join DATAWAREHOUSE.GC_PROD_WH.RAW_AGING_BUCKET_BY_COMPANY inv_age
-            on ct."COMPANY"           =  inv_age.COMPANY
+            on replace(ct."COMPANY",'_','.') =  replace(inv_age.COMPANY,'_','.')
             and ct."INVOICE AGED DAYS" >= inv_age."FROM"
             and ct."INVOICE AGED DAYS" <= inv_age."TO" 
     )
@@ -124,7 +125,7 @@ USING(
         FROM final 
 
 
-) as source
+) as src
 ON target.summarykey = src.summarykey
     when matched 
         then update 
