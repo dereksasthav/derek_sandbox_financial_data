@@ -21,7 +21,9 @@ USING(
             , coalesce(  dcle."CUSTOMER NO_"  , cle."CUSTOMER NO_") "CUSTOMER NO."
             , coalesce(  dcle."DOCUMENT NO_"  , cle."DOCUMENT NO_") "DOCUMENT NO."
             , coalesce(  dcle."CUST_ LEDGER ENTRY NO_", cle."ENTRY NO_")    "CUST. LEDGER ENTRY NO."
-            , coalesce(dcle."POSTING DATE" , cle."POSTING DATE"  )   "POSTING DATE"
+            --, coalesce(dcle."POSTING DATE" , cle."POSTING DATE"  )   "POSTING DATE"
+            , dcle."POSTING DATE" as "DETAIL POSTING DATE"
+            , cle."POSTING DATE" as "HEADER POSTING DATE"
             , SUM(dcle.amount) "AR MONTHEND BALANCE"
             , cle."OPEN" 
             , cle."CLOSED AT DATE"
@@ -66,7 +68,10 @@ USING(
             , coalesce(  dcle."CUSTOMER NO_"  , cle."CUSTOMER NO_")
             , coalesce(  dcle."DOCUMENT NO_"  , cle."DOCUMENT NO_") 
             , coalesce(  dcle."CUST_ LEDGER ENTRY NO_", cle."ENTRY NO_") 
-            , coalesce(dcle."POSTING DATE" , cle."POSTING DATE"  )  
+            --, coalesce(dcle."POSTING DATE" , cle."POSTING DATE"  )  
+            , dcle."POSTING DATE" as "DETAIL POSTING DATE"
+            , cle."POSTING DATE" as "HEADER POSTING DATE"
+            
             , cle."OPEN" 
             , cle."CLOSED AT DATE"
             , cle."CLOSED BY AMOUNT"
@@ -86,7 +91,8 @@ USING(
             , base_ar."CUSTOMER NO."
             , base_ar."DOCUMENT NO."
             , base_ar."CURRENCY CODE"
-            , base_ar."POSTING DATE"
+            , base_ar."DETAIL POSTING DATE"
+            , base_ar."HEADER POSTING DATE"
             , base_ar."CURRENCY CODE LCY"
             , base_ar."DOCUMENT DATE"
             , base_ar."INITIAL ENTRY DUE DATE"
@@ -99,7 +105,7 @@ USING(
         from base_ar
         CROSS JOIN mon_dt m
         WHERE 
-            (base_ar."POSTING DATE" <= m.DATE_MONTH_END
+            (base_ar."DETAIL POSTING DATE" <= m.DATE_MONTH_END
             --AND m.DATE_MONTH_END <> CAST(FLOOR(CAST(GETDATE() AS FLOAT)) AS DATETIME) -- is this needed?
             AND (base_ar."CLOSED AT DATE" >= m.DATE_MONTH_END OR base_ar."CLOSED AT DATE" = CAST('1753-01-01' AS DATETIME))) --OR [Closed at Date] IS NULL))
             OR 	
@@ -107,7 +113,25 @@ USING(
         ORDER BY m.DATE_MONTH_END
     ), final as (
 
-        select ct.*
+        select 
+            ct. SUMMARYKEY
+            , ct.DATEMONTHEND
+            , ct."CUST. LEDGER ENTRY NO."
+            , ct.COMPANY
+            , ct."CUSTOMER NO."
+            , ct."DOCUMENT NO."
+            , ct."CURRENCY CODE"
+            --, ct."DETAIL POSTING DATE"
+            , ct."HEADER POSTING DATE" as "POSTING DATE"
+            , ct."CURRENCY CODE LCY"
+            , ct."DOCUMENT DATE"
+            , ct."INITIAL ENTRY DUE DATE"
+            , SUM(ct."AR INVOICE AMOUNT (LCY)") as "AR INVOICE AMOUNT (LCY)"
+            , SUM(ct."AR INVOICE AMOUNT") as "AR INVOICE AMOUNT"
+            , SUM(ct."AR MONTHEND BALANCE (LCY)") as "AR MONTHEND BALANCE (LCY)"
+            , SUM(ct."AR MONTHEND BALANCE") as "AR MONTHEND BALANCE"
+            , ct."DUE AGED DAYS"
+            , ct."INVOICE AGED DAYS"
             , due_age."BUCKET ID" as "BUCKET ID BY DUE"
             , inv_age."BUCKET ID" as "BUCKET ID BY INVOICE"
             , current_date() as INGEST_DATETIME
@@ -120,6 +144,24 @@ USING(
             on replace(ct."COMPANY",'_','.') =  replace(inv_age.COMPANY,'_','.')
             and ct."INVOICE AGED DAYS" >= inv_age."FROM"
             and ct."INVOICE AGED DAYS" <= inv_age."TO" 
+        GROUP BY 
+             ct. SUMMARYKEY
+            , ct.DATEMONTHEND
+            , ct."CUST. LEDGER ENTRY NO."
+            , ct.COMPANY
+            , ct."CUSTOMER NO."
+            , ct."DOCUMENT NO."
+            , ct."CURRENCY CODE"
+            --, ct."DETAIL POSTING DATE"
+            , ct."HEADER POSTING DATE"
+            , ct."CURRENCY CODE LCY"
+            , ct."DOCUMENT DATE"
+            , ct."INITIAL ENTRY DUE DATE"
+            , ct."DUE AGED DAYS"
+            , ct."INVOICE AGED DAYS"
+            , due_age."BUCKET ID" as "BUCKET ID BY DUE"
+            , inv_age."BUCKET ID" as "BUCKET ID BY INVOICE"
+            , current_date() as INGEST_DATETIME
     )
         SELECT *
         FROM final 
