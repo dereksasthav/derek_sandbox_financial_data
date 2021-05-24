@@ -69,9 +69,8 @@ USING(
             , coalesce(  dcle."DOCUMENT NO_"  , cle."DOCUMENT NO_") 
             , coalesce(  dcle."CUST_ LEDGER ENTRY NO_", cle."ENTRY NO_") 
             --, coalesce(dcle."POSTING DATE" , cle."POSTING DATE"  )  
-            , dcle."POSTING DATE" as "DETAIL POSTING DATE"
-            , cle."POSTING DATE" as "HEADER POSTING DATE"
-            
+            , dcle."POSTING DATE" 
+            , cle."POSTING DATE" 
             , cle."OPEN" 
             , cle."CLOSED AT DATE"
             , cle."CLOSED BY AMOUNT"
@@ -84,8 +83,7 @@ USING(
     ), cartesian as (
 
         select 
-            ROW_NUMBER() OVER(ORDER BY  DATE_MONTH_END, "COMPANY", "CUST. LEDGER ENTRY NO.") as SUMMARYKEY
-            , m.DATE_MONTH_END as DATEMONTHEND
+            m.DATE_MONTH_END as DATEMONTHEND
             , base_ar."CUST. LEDGER ENTRY NO."
             , base_ar.COMPANY
             , base_ar."CUSTOMER NO."
@@ -113,8 +111,9 @@ USING(
         ORDER BY m.DATE_MONTH_END
     ), final as (
 
+        /** add one more grouping to regroup to header record and remove detail, remove records with header open amount of 0 **/
         select 
-            ct. SUMMARYKEY
+            ROW_NUMBER() OVER(ORDER BY  ct.DATEMONTHEND, ct."COMPANY", ct."CUST. LEDGER ENTRY NO.") as SUMMARYKEY
             , ct.DATEMONTHEND
             , ct."CUST. LEDGER ENTRY NO."
             , ct.COMPANY
@@ -145,8 +144,7 @@ USING(
             and ct."INVOICE AGED DAYS" >= inv_age."FROM"
             and ct."INVOICE AGED DAYS" <= inv_age."TO" 
         GROUP BY 
-             ct. SUMMARYKEY
-            , ct.DATEMONTHEND
+           ct.DATEMONTHEND
             , ct."CUST. LEDGER ENTRY NO."
             , ct.COMPANY
             , ct."CUSTOMER NO."
@@ -159,9 +157,10 @@ USING(
             , ct."INITIAL ENTRY DUE DATE"
             , ct."DUE AGED DAYS"
             , ct."INVOICE AGED DAYS"
-            , due_age."BUCKET ID" as "BUCKET ID BY DUE"
-            , inv_age."BUCKET ID" as "BUCKET ID BY INVOICE"
-            , current_date() as INGEST_DATETIME
+            , due_age."BUCKET ID" 
+            , inv_age."BUCKET ID"
+            , current_date()
+        HAVING SUM(ct."AR MONTHEND BALANCE") <> 0
     )
         SELECT *
         FROM final 
