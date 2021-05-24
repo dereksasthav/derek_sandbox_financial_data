@@ -56,7 +56,8 @@ with gcprod as (
         , COUNT(*) as numRecords_zap
         , SUM("AR MONTHEND BALANCE") as balance_zap
     FROM DATAWAREHOUSE.ZAP_BIZ_CENTRAL.STAGE_ACCOUNTS_RECEIVABLE_MONTHLY
-    WHERE company = '20.02-SESC'
+    WHERE 1=1
+        AND company = '20.02-SESC'
     GROUP BY COMPANY, DATEMONTHEND
 
 )
