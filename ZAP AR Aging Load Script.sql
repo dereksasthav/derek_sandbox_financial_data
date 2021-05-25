@@ -27,7 +27,10 @@ USING(
             --, dcle."ENTRY TYPE"
             , coalesce( sih."CURRENCY CODE", dcle."CURRENCY CODE", cle."CURRENCY CODE", gls."LCY CODE" )  "CURRENCY CODE"
             , cle."DOCUMENT DATE"  "DOCUMENT DATE"
-            , coalesce( sih."DUE DATE", dcle."INITIAL ENTRY DUE DATE" , cle."DUE DATE")  "INITIAL ENTRY DUE DATE"
+            , CASE WHEN dcle."INITIAL ENTRY DUE DATE" =  CAST('1753-01-01' AS DATETIME) OR dcle."INITIAL ENTRY DUE DATE" IS NULL 
+                THEN sih."DUE DATE"
+                ELSE dcle."INITIAL ENTRY DUE DATE"
+                END "INITIAL ENTRY DUE DATE"
             , SUM(dcle."AMOUNT (LCY)") as "AR MONTHEND BALANCE (LCY)" 
             , current_date()                    "ZAP_TIMESTAMP"
             , current_date()                    "ZAP_CREATEDTIME"
@@ -63,7 +66,10 @@ USING(
             , cle."CLOSED BY AMOUNT"
             , coalesce( sih."CURRENCY CODE", dcle."CURRENCY CODE", cle."CURRENCY CODE", gls."LCY CODE" ) 
             , cle."DOCUMENT DATE"  
-            , coalesce(  sih."DUE DATE", dcle."INITIAL ENTRY DUE DATE" , cle."DUE DATE" ) 
+            , CASE WHEN dcle."INITIAL ENTRY DUE DATE" =  CAST('1753-01-01' AS DATETIME) OR dcle."INITIAL ENTRY DUE DATE" IS NULL 
+                THEN sih."DUE DATE"
+                ELSE dcle."INITIAL ENTRY DUE DATE"
+                END
             , cle."POSITIVE"
         HAVING SUM(dcle.amount) <> 0
     ), cartesian as (
@@ -147,6 +153,7 @@ USING(
     )
         SELECT *
         FROM final 
+
 ) as src
 ON target.summarykey = src.summarykey
     when matched 
