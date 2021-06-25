@@ -24,7 +24,8 @@ WITH src AS (
                                         'Digester VFA', 
                                         'Feedstock Storage COD', 
                                         'Gas to CHP', 
-                                        'Gas to Flare')
+                                        'Gas to Flare',
+                                        'CHP Gas Volume In')
 
 ), weekday_metrics AS (
 
