@@ -1,35 +1,3 @@
-/** 
-SELECT *
-FROM datawarehouse.public_tableau.vw_wtv_equipment_pivot
-;
-
-
-SELECT *
-FROM datawarehouse.public_tableau.vw_wtv_equipment_pivot
-WHERE 1=1
-    AND Equipment_Group = 'Digester Dosing Volume'
-    
-;
-
-
-
-SELECT 
-    RECORD_DATE_LOCAL  
-    , EQUIPMENT_CODE
-    , EQUIPMENT_GROUP
-    , SUM(unit_value) as val
-FROM datawarehouse.public_tableau.vw_wtv_equipment_pivot
-WHERE 1=1
-    AND Equipment_Group = 'Digester Dosing Volume'
-    AND DATE_TRUNC('week', RECORD_DATE_LOCAL) = DATE_TRUNC('week',CURRENT_DATE())
-    AND SITE_NAME = 'Fremont'
-GROUP BY 1,2,3
-ORDER BY 2,1
-;
-
-**/
-
-
 /** Open questions:
 1. How to perform averages, include days with no data?
  **/
@@ -42,13 +10,13 @@ WITH src AS (
 ), dim AS (
 
     SELECT DISTINCT
-        EQUIPMENT_GROUP
+        CASE WHEN METRIC_TYPE = 'VFA_TIC' THEN 'VFA/TIC' ELSE EQUIPMENT_GROUP END AS EQUIPMENT_GROUP
         , EQUIPMENT_CODE
         , SITE_NAME 
     FROM src
     WHERE 1=1
         AND SITE_NAME = 'Fremont'
-        AND Equipment_Group IN  ('Digester Dosing Volume','COD', 'Gas to CHP', 'Gas to Flare')
+        AND (TRIM(Equipment_Group) IN  ('Digester Dosing Volume','Feedstock Storage COD', 'Gas to CHP', 'Gas to Flare') OR TRIM(Equipment_Group) LIKE 'Digester %')
 
 ), weekday_metrics AS (
 
