@@ -1,6 +1,6 @@
 /** Open questions:
 1. How to perform averages, include days with no data?
- **/
+**/
 
 
 WITH src AS (
@@ -16,7 +16,15 @@ WITH src AS (
     FROM src
     WHERE 1=1
         AND SITE_NAME = 'Fremont'
-        AND (TRIM(Equipment_Group) IN  ('Digester Dosing Volume','Feedstock Storage COD', 'Gas to CHP', 'Gas to Flare') OR TRIM(Equipment_Group) LIKE 'Digester %')
+        AND TRIM(Equipment_Group) IN  ('Digester Dosing Volume',
+                                        'Digester COD',
+                                        'Digester ORP', 
+                                        'Digester pH',
+                                        'Digester TIC',
+                                        'Digester VFA', 
+                                        'Feedstock Storage COD', 
+                                        'Gas to CHP', 
+                                        'Gas to Flare')
 
 ), weekday_metrics AS (
 
@@ -76,3 +84,4 @@ WITH src AS (
 
 SELECT *
 FROM average_metrics
+ORDER BY 1,2,3
