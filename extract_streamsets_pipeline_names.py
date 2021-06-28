@@ -16,6 +16,10 @@ for filename in os.listdir(base_file_path)[:2]:
             title = data["pipelineConfig"]["title"]
             pipelineID = data["pipelineConfig"]["pipelineId"]
             payload = {'title':title, 'pipelineID':pipelineID}
+            titles.append(payload)
             print(pipelineID, title)
 
 print(titles)
+df = pd.DataFrame(titles)
+print(df.head())
+df.to_csv('StreamSets_Pipeline_Titles.csv', index=False,sep=",")

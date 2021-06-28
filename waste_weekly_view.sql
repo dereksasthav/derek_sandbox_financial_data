@@ -1,5 +1,6 @@
 /** Open questions:
 1. How to perform averages, include days with no data?
+
 **/
 
 
