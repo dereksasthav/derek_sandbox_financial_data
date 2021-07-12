@@ -1,4 +1,4 @@
-WITH buckets AS (
+WITH raw_buckets AS (
 
     SELECT * FROM DATAWAREHOUSE.GC_PROD_WH.RAW_AGING_BUCKET_BY_COMPANY
 
@@ -14,7 +14,7 @@ WITH buckets AS (
 ), buckets_companies AS (
 
     SELECT DISTINCT COMPANY
-    FROM buckets
+    FROM raw_buckets
 
 ), missing_companies AS (
 
@@ -27,7 +27,7 @@ WITH buckets AS (
 ), default_buckets AS (
 
     SELECT *
-    FROM buckets
+    FROM raw_buckets
     WHERE COMPANY = '10.01-GCI'
 
 
@@ -76,7 +76,7 @@ WITH buckets AS (
         , "TO"
         , "DIRECTION FOR DUE"
         , "DIRECTION FOR INVOICE"
-    FROM buckets
+    FROM raw_buckets
 
 
 )
