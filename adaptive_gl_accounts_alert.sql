@@ -55,6 +55,60 @@ WITH adaptive_src AS (
     FROM adaptive_src
     WHERE 1=1
         
+), adaptive_accounts AS (
+
+    SELECT 
+        account_child5_name AS parent_account_name
+        , account_child6_name AS child_account_name
+    FROM adaptive_src 
+    WHERE 1=1
+        AND account_child6_name IS NOT NULL 
+
+    UNION
+
+    SELECT 
+        account_child4_name AS parent_account_name
+        , account_child5_name AS child_account_name
+    FROM adaptive_src 
+    WHERE 1=1
+        AND account_child5_name IS NOT NULL 
+
+    UNION 
+    
+    SELECT 
+        account_child3_name AS parent_account_name
+        , account_child4_name AS child_account_name
+    FROM adaptive_src 
+    WHERE 1=1
+        AND account_child4_name IS NOT NULL 
+
+    UNION 
+
+    SELECT 
+        account_child2_name AS parent_account_name
+        , account_child3_name AS child_account_name
+    FROM adaptive_src 
+    WHERE 1=1
+        AND account_child3_name IS NOT NULL 
+
+    UNION 
+
+    SELECT 
+        account_child1_name AS parent_account_name
+        , account_child2_name AS child_account_name
+    FROM adaptive_src 
+    WHERE 1=1
+        AND account_child2_name IS NOT NULL 
+
+    UNION 
+
+    SELECT 
+        account_name AS parent_account_name
+        , account_child1_name AS child_account_name
+    FROM adaptive_src 
+    WHERE 1=1
+        AND account_child1_name IS NOT NULL 
+
 )
 
 SELECT DISTINCT
@@ -62,8 +116,8 @@ SELECT DISTINCT
     , actual_accounts.account 
     , LAST_DAY(actual_accounts.periodenddate,'month') as periodenddate 
 FROM actual_accounts
-LEFT JOIN adaptive 
-    ON actual_accounts.account = adaptive_account_code
+LEFT JOIN adaptive _accounts
+    ON actual_accounts.account = adaptive_accounts.child_account_name
 WHERE 1=1
     AND adaptive.adaptive_account_code IS NULL
     AND periodenddate = '2021-07-31'
