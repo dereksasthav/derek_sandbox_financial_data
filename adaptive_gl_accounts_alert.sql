@@ -20,42 +20,7 @@ WITH adaptive_src AS (
     SELECT DISTINCT companycode, account, periodenddate
     FROM is_src 
 
-), adaptive AS (
-
-    SELECT sheet
-        , code
-        , description
-        , name
-        , account_code
-        , account_name
-        , account_child1_name
-        , account_child2_name
-        , account_child3_name
-        , account_child4_name
-        , account_child5_name
-        , account_child6_name 
-        , COALESCE(
-            account_child6_name,
-            account_child5_name,
-            account_child4_name,
-            account_child3_name,
-            account_child2_name,
-            account_child1_name,
-            account_name
-        ) AS adaptive_account_name
-        , TRIM(SPLIT_PART(COALESCE(
-            account_child6_name,
-            account_child5_name,
-            account_child4_name,
-            account_child3_name,
-            account_child2_name,
-            account_child1_name,
-            account_name
-        ),' - ',0)) AS adaptive_account_code 
-    FROM adaptive_src
-    WHERE 1=1
-        
-), adaptive_accounts AS (
+), adaptive_hierarchy AS (
 
     SELECT 
         account_child5_name AS parent_account_name
@@ -109,6 +74,15 @@ WITH adaptive_src AS (
     WHERE 1=1
         AND account_child1_name IS NOT NULL 
 
+), adaptive AS (
+
+    SELECT 
+        parent_account_name
+        , child_account_name
+        , TRIM(SPLIT_PART(parent_account_name, ' - ',0)) as parent_account_code 
+        , TRIM(SPLIT_PART(child_account_name, ' - ',0)) as child_account_code 
+    FROM adaptive_hierarchy
+
 )
 
 SELECT DISTINCT
@@ -116,9 +90,9 @@ SELECT DISTINCT
     , actual_accounts.account 
     , LAST_DAY(actual_accounts.periodenddate,'month') as periodenddate 
 FROM actual_accounts
-LEFT JOIN adaptive _accounts
-    ON actual_accounts.account = adaptive_accounts.child_account_name
+LEFT JOIN adaptive
+    ON actual_accounts.account = adaptive_accounts.child_account_code 
 WHERE 1=1
-    AND adaptive.adaptive_account_code IS NULL
+    AND adaptive.child_account_code IS NULL
     AND periodenddate = '2021-07-31'
 ORDER BY periodenddate DESC, actual_accounts.companycode, actual_accounts.account 
